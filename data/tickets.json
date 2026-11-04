@@ -1,0 +1,38 @@
+[
+  {
+    "ticket_id": "TIK-001",
+    "customer_id": "CUST-001",
+    "order_id": "ORD-001",
+    "subject": "Left headphone stopped producing sound",
+    "message": "Hello, I received my ANC headphones on October 18th. Yesterday the left ear cup completely died. I would like to request a refund or replacement under policy.",
+    "status": "open",
+    "created_at": "2026-11-01T09:00:00+02:00"
+  },
+  {
+    "ticket_id": "TIK-002",
+    "customer_id": "CUST-002",
+    "order_id": "ORD-002",
+    "subject": "Missing keycap in keyboard box",
+    "message": "Hi team, I unboxed my mechanical keyboard and noticed the escape keycap is missing from the package. Can you send a replacement keycap?",
+    "status": "open",
+    "created_at": "2026-10-25T11:00:00Z"
+  },
+  {
+    "ticket_id": "TIK-003",
+    "customer_id": "CUST-003",
+    "order_id": "ORD-003",
+    "subject": "Delivery delay status update",
+    "message": "My 4K monitor tracking has not updated in 4 days. Could you check if the shipment is lost or stuck in customs?",
+    "status": "in_review",
+    "created_at": "2026-10-31T15:30:00Z"
+  },
+  {
+    "ticket_id": "TIK-NO-ORDER",
+    "customer_id": "CUST-004",
+    "order_id": null,
+    "subject": "General inquiry about warranty coverage before purchase",
+    "message": "I am looking at purchasing an expensive monitor and want to verify what your dead pixel policy is and how long manufacturer warranty lasts.",
+    "status": "open",
+    "created_at": "2026-10-26T14:00:00Z"
+  }
+]

@@ -1,0 +1,66 @@
+[
+  {
+    "order_id": "ORD-001",
+    "customer_id": "CUST-001",
+    "order_date": "2026-10-15T14:30:00-04:00",
+    "delivery_date": "2026-10-18T10:00:00-04:00",
+    "status": "delivered",
+    "total_amount": 149.99,
+    "items": [
+      {
+        "sku": "SKU-AUDIO-ANC-01",
+        "name": "Over-Ear ANC Headphones",
+        "price": 149.99,
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-002",
+    "customer_id": "CUST-002",
+    "order_date": "2026-10-20T09:15:00Z",
+    "delivery_date": "2026-10-23T15:00:00Z",
+    "status": "delivered",
+    "total_amount": 79.50,
+    "items": [
+      {
+        "sku": "SKU-KEY-MECH-02",
+        "name": "Compact Mechanical Keyboard",
+        "price": 79.50,
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-003",
+    "customer_id": "CUST-003",
+    "order_date": "2026-10-28T16:00:00+01:00",
+    "delivery_date": null,
+    "status": "in_transit",
+    "total_amount": 299.00,
+    "items": [
+      {
+        "sku": "SKU-DISP-4K-03",
+        "name": "27-inch 4K UHD Monitor",
+        "price": 299.00,
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-004",
+    "customer_id": "CUST-004",
+    "order_date": "2026-09-01T12:00:00Z",
+    "delivery_date": "2026-09-05T14:00:00Z",
+    "status": "delivered",
+    "total_amount": 45.00,
+    "items": [
+      {
+        "sku": "SKU-CBL-USB-04",
+        "name": "Braided USB-C Charging Hub",
+        "price": 45.00,
+        "qty": 1
+      }
+    ]
+  }
+]

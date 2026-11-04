@@ -1,0 +1,33 @@
+# Personal walkthrough documentation (excluded from public repository)
+/walkthroughs/
+
+# Local environment configuration
+.env
+.env.local
+*.env
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Node / Frontend build outputs and dependencies
+frontend/node_modules/
+frontend/dist/
+node_modules/
+dist/
+
+# OS and IDE files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

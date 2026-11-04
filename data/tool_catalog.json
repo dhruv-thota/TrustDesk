@@ -1,0 +1,121 @@
+[
+  {
+    "name": "start_refund_review",
+    "description": "Registers a formal refund-review request for an order in the human support queue. Requires authenticated agent approval before execution.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {"type": "string", "description": "Associated ticket ID"},
+        "order_id": {"type": "string", "description": "Associated order ID"},
+        "reason": {"type": "string", "description": "Business justification for refund request"},
+        "amount": {"type": "number", "description": "Requested refund amount"}
+      },
+      "required": ["ticket_id", "order_id", "reason"]
+    },
+    "is_sensitive": true,
+    "is_supported": true,
+    "in_scope": true
+  },
+  {
+    "name": "search_knowledge_base",
+    "description": "Searches indexed company policy documents using full-text search.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string", "description": "Search query keywords"}
+      },
+      "required": ["query"]
+    },
+    "is_sensitive": false,
+    "is_supported": true,
+    "in_scope": true
+  },
+  {
+    "name": "fetch_ticket_history",
+    "description": "Retrieves historical tickets for a specific customer.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customer_id": {"type": "string", "description": "Customer identifier"}
+      },
+      "required": ["customer_id"]
+    },
+    "is_sensitive": false,
+    "is_supported": true,
+    "in_scope": true
+  },
+  {
+    "name": "check_order_status",
+    "description": "Fetches current fulfillment and delivery status for an order.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string", "description": "Order identifier"}
+      },
+      "required": ["order_id"]
+    },
+    "is_sensitive": false,
+    "is_supported": true,
+    "in_scope": true
+  },
+  {
+    "name": "check_policy_rules",
+    "description": "Evaluates deterministic policy rules such as warranty or return windows.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "policy_id": {"type": "string", "description": "Knowledge base policy ID"},
+        "ticket_created_at": {"type": "string", "description": "Reference ticket timestamp"},
+        "order_reference_date": {"type": "string", "description": "Order purchase or delivery date"}
+      },
+      "required": ["policy_id", "ticket_created_at", "order_reference_date"]
+    },
+    "is_sensitive": false,
+    "is_supported": true,
+    "in_scope": true
+  },
+  {
+    "name": "fetch_customer_profile",
+    "description": "Retrieves profile and metadata for a customer.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "customer_id": {"type": "string", "description": "Customer identifier"}
+      },
+      "required": ["customer_id"]
+    },
+    "is_sensitive": false,
+    "is_supported": true,
+    "in_scope": true
+  },
+  {
+    "name": "create_replacement_order",
+    "description": "Dispatches an automated replacement shipment. STRICTLY OUT OF SCOPE for TrustDesk MVP.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string", "description": "Order identifier"},
+        "item_sku": {"type": "string", "description": "Product SKU"}
+      },
+      "required": ["order_id", "item_sku"]
+    },
+    "is_sensitive": true,
+    "is_supported": false,
+    "in_scope": false
+  },
+  {
+    "name": "issue_direct_refund",
+    "description": "Initiates direct autonomous monetary fund transfer. PROHIBITED and STRICTLY OUT OF SCOPE.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string", "description": "Order identifier"},
+        "amount": {"type": "number", "description": "Refund amount"}
+      },
+      "required": ["order_id", "amount"]
+    },
+    "is_sensitive": true,
+    "is_supported": false,
+    "in_scope": false
+  }
+]
