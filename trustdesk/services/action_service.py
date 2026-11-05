@@ -305,3 +305,21 @@ def reject_action(
     logger.info("Action %s rejected by agent %s", action_id, agent.agent_id)
     return action
 
+
+def list_ticket_actions(db: Session, ticket_id: str) -> list[ProposedAction]:
+    """Retrieve all proposed actions for a ticket ordered newest first (U-014).
+
+    Raises TicketNotFoundError if the ticket does not exist.
+    """
+    ticket = db.scalar(select(Ticket).where(Ticket.ticket_id == ticket_id))
+    if not ticket:
+        raise TicketNotFoundError(ticket_id=ticket_id)
+
+    stmt = (
+        select(ProposedAction)
+        .where(ProposedAction.ticket_id == ticket_id)
+        .order_by(ProposedAction.created_at.desc())
+    )
+    return list(db.scalars(stmt).all())
+
+

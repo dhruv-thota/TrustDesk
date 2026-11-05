@@ -18,6 +18,7 @@ from trustdesk.schemas.action import (
 )
 from trustdesk.services.action_service import (
     approve_action,
+    list_ticket_actions,
     propose_refund_review,
     reject_action,
 )
@@ -25,6 +26,21 @@ from trustdesk.services.action_service import (
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["Controlled Actions"])
+
+
+@router.get(
+    "/tickets/{ticket_id}/actions",
+    response_model=list[ProposedActionSchema],
+    status_code=status.HTTP_200_OK,
+)
+def list_ticket_actions_endpoint(
+    ticket_id: str,
+    db: Session = Depends(get_db),
+    _agent: AgentIdentity = Depends(verify_demo_token),
+) -> Any:
+    """Retrieve all proposed operational actions for a ticket ordered newest first (U-014)."""
+    return list_ticket_actions(db=db, ticket_id=ticket_id)
+
 
 
 @router.post(

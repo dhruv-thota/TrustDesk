@@ -540,3 +540,105 @@ def test_approver_identity_spoofing_prevented() -> None:
     with get_db_session() as session:
         action = session.scalar(select(ProposedAction).where(ProposedAction.action_id == uuid.UUID(action_id)))
         assert action.reviewed_by == "demo-agent-001"
+
+
+# --- Phase 6: U-014 Action Discovery & CORS Tests ---
+
+def test_list_ticket_actions_unauthenticated() -> None:
+    """U-014: Unauthenticated GET /api/v1/tickets/{id}/actions returns 401 Unauthorized."""
+    res = client.get("/api/v1/tickets/TIK-001/actions")
+    assert res.status_code == 401
+    assert res.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_list_ticket_actions_nonexistent_ticket() -> None:
+    """U-014: GET actions for nonexistent ticket returns 404 Not Found."""
+    res = client.get("/api/v1/tickets/TIK-NONEXISTENT/actions", headers=AUTH_HEADER)
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "TICKET_NOT_FOUND"
+
+
+def test_list_ticket_actions_empty() -> None:
+    """U-014: GET actions for ticket with no proposed actions returns empty list []."""
+    _seed_ticket("TIK-001", "ORD-001")
+    res = client.get("/api/v1/tickets/TIK-001/actions", headers=AUTH_HEADER)
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_list_ticket_actions_success_ordered() -> None:
+    """U-014: GET actions returns list ordered newest first (created_at DESC)."""
+    _seed_ticket("TIK-001", "ORD-001")
+
+    # 1. Propose action 1
+    p1 = client.post(
+        "/api/v1/tickets/TIK-001/actions/refund-review/propose",
+        headers=AUTH_HEADER,
+        json={"action_type": "start_refund_review", "notes": "First proposal"},
+    )
+    assert p1.status_code == 201
+    action_1_id = p1.json()["action_id"]
+
+    # Reject action 1 to release uniqueness slot under U-001
+    rej = client.post(
+        f"/api/v1/actions/{action_1_id}/reject",
+        headers=AUTH_HEADER,
+        json={"reason": "Customer changed mind"},
+    )
+    assert rej.status_code == 200
+
+    # 2. Propose action 2
+    p2 = client.post(
+        "/api/v1/tickets/TIK-001/actions/refund-review/propose",
+        headers=AUTH_HEADER,
+        json={"action_type": "start_refund_review", "notes": "Second proposal after review"},
+    )
+    assert p2.status_code == 201
+    action_2_id = p2.json()["action_id"]
+
+    # 3. Query action discovery
+    res = client.get("/api/v1/tickets/TIK-001/actions", headers=AUTH_HEADER)
+    assert res.status_code == 200
+    actions = res.json()
+    assert len(actions) == 2
+
+    # Verify newest is first
+    assert actions[0]["action_id"] == action_2_id
+    assert actions[0]["status"] == "pending_approval"
+    assert actions[0]["review_notes"] == "Second proposal after review"
+
+    assert actions[1]["action_id"] == action_1_id
+    assert actions[1]["status"] == "rejected"
+    assert actions[1]["review_notes"] == "Customer changed mind"
+
+
+def test_cors_preflight_scoped_origins() -> None:
+    """Verify CORS preflight succeeds for approved local development origins and headers."""
+    # Test localhost:5173
+    res = client.options(
+        "/api/v1/tickets",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,idempotency-key,content-type",
+        },
+    )
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert res.headers.get("access-control-allow-credentials") == "true"
+    allowed_headers = res.headers.get("access-control-allow-headers", "").lower()
+    assert "authorization" in allowed_headers
+    assert "idempotency-key" in allowed_headers
+
+    # Test 127.0.0.1:5173
+    res2 = client.options(
+        "/api/v1/tickets",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert res2.status_code == 200
+    assert res2.headers.get("access-control-allow-origin") == "http://127.0.0.1:5173"
+

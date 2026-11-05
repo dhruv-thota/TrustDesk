@@ -33,14 +33,14 @@ This register is a permanent, living document designed to prevent unverified ass
 
 | Category | Open | Blocked | Resolved | Total |
 |---|:---:|:---:|:---:|:---:|
-| 1. Open Architectural & Behavioral Decisions | 0 | 0 | 3 | 3 |
+| 1. Open Architectural & Behavioral Decisions | 0 | 0 | 4 | 4 |
 | 2. Dataset & Policy Dependencies | 0 | 1 | 3 | 4 |
 | 3. Implementation & Configuration Decisions | 1 | 0 | 2 | 3 |
 | 4. Verification Dependencies | 1 | 0 | 0 | 1 |
 | 5. Post-MVP Deferred Items | 2 | 0 | 0 | 2 |
-| **Total Tracked Items** | **4** | **1** | **8** | **13** |
+| **Total Tracked Items** | **4** | **1** | **9** | **14** |
 
-*Note: 1 item is currently **Blocked** pending Phase 7 evaluation cases (`U-004` awaiting `eval_cases.jsonl`). `U-007` has approved baseline parameters unblocking Phase 3 retrieval. All Phase 5 architectural decisions (`U-001`, `U-008`) are fully resolved.*
+*Note: 1 item is currently **Blocked** pending Phase 7 evaluation cases (`U-004` awaiting `eval_cases.jsonl`). `U-007` has approved baseline parameters unblocking Phase 3 retrieval. All Phase 5 architectural decisions (`U-001`, `U-008`) and Phase 6 action discovery (`U-014`) are fully resolved.*
 
 ---
 
@@ -323,3 +323,42 @@ This register is a permanent, living document designed to prevent unverified ass
 - **Why It Matters / Rationale:** Guarantees immutable audit records, eliminates race conditions through row-level locking, provides predictable idempotency semantics, and prevents unreviewed or duplicate operational actions.
 - **Status:** **RESOLVED**
 - **Reference:** `docs/architecture.md` §5.3, §5.4, §8.5; `docs/problem_statement.md` §3.5
+
+---
+
+### U-014 — Active Action Discovery for Support-Agent Dashboard
+- **ID:** `U-014`
+- **Category:** 1. Open Architectural and Behavioral Decisions
+- **Earliest Resolution Phase:** Phase 6 (Internal Support-Agent Dashboard)
+- **Resolved Date:** 2026-11-04
+- **Resolution Authority:** User Explicit Approval (Option 1: Add Read-Only Authenticated Endpoint `GET /api/v1/tickets/{ticket_id}/actions`)
+- **Approved Decision & Contract Specification:**
+  - **Why Action Discovery Is Required:** In Phase 5, action endpoints were strictly write operations (`POST /propose`, `POST /approve`, `POST /reject`). Neither `GET /api/v1/tickets/{ticket_id}` nor `GET /api/v1/tickets/{ticket_id}/context` returned associated proposed actions. When an agent opens a ticket that already has a pending refund review (from a previous session, another agent, or after a page refresh/reselection), the dashboard could not discover the `action_id`. Re-proposing would correctly trigger HTTP 409 Conflict (`ACTIVE_REVIEW_ALREADY_EXISTS`), but without an action discovery endpoint, the agent was blocked from viewing or executing the approval/rejection card.
+  - **Approved Endpoint & Route:**
+    - Method: `GET`
+    - Path: `/api/v1/tickets/{ticket_id}/actions`
+    - Router: `trustdesk/api/v1/actions.py`
+    - Tags: `["Controlled Actions"]`
+  - **Authentication & Authorization:**
+    - Mandatory server-validated demo bearer token via FastAPI dependency `verify_demo_token`.
+    - Missing, malformed, or invalid bearer token returns HTTP 401 Unauthorized with standard code `UNAUTHORIZED`.
+  - **Request Contract:**
+    - Path parameter: `ticket_id: str` (validated for existence against `tickets` table).
+    - Headers: `Authorization: Bearer <token>`.
+  - **Expected Response Contract:**
+    - Status: HTTP 200 OK.
+    - Response Model: `list[ProposedActionSchema]` (reusing existing Phase 5 Pydantic schema in `trustdesk/schemas/action.py`).
+    - Scope & Ordering: Returns all proposed actions associated with the ticket ordered by `created_at DESC` (newest first). If no actions have been proposed, returns an empty list `[]`.
+    - Active Action Extraction: The frontend inspects the returned list to locate any action in `status == 'pending_approval'`, or the latest terminal action (`executed`, `rejected`, `failed`).
+  - **Error Behavior:**
+    - `401 Unauthorized`: Missing or invalid bearer token (`{"error": {"code": "UNAUTHORIZED", "message": "...", "details": {}}}`).
+    - `404 Not Found`: Ticket does not exist (`{"error": {"code": "TICKET_NOT_FOUND", "message": "Ticket with ID '<ticket_id>' was not found.", "details": {"ticket_id": "<ticket_id>"}}}`).
+    - `503 Service Unavailable`: Database unreachable (`{"error": {"code": "DATABASE_UNAVAILABLE", "message": "Primary database service is unreachable.", "details": {}}}`).
+  - **Preservation of Phase 5 Semantics:**
+    - Zero modification to state machine transitions (`pending_approval -> executed | rejected | failed`).
+    - Zero modification to partial unique index `idx_unique_active_refund_review` (`(ticket_id, action_type)` for `pending_approval`, `executed`).
+    - Zero modification to approval row locking (`SELECT ... FOR UPDATE`), server identity binding (`reviewed_by`), request hash checking, or `action_idempotency` replay order.
+    - Fully preserves all 134 existing automated tests.
+- **Why It Matters / Rationale:** Provides clean, RESTful discoverability for human agents to inspect and act upon pending approvals across browser reloads, without requiring complex client-side caching or state hacks.
+- **Status:** **RESOLVED (Architectural Decision Approved; Implementation Scheduled in Phase 6)**
+- **Reference:** `docs/architecture.md` §3.1, §8.5, §12.3; `docs/implementation_plan.md` §3 (Phase 6)
