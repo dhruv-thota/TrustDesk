@@ -343,7 +343,10 @@ def test_get_ticket_context_not_found() -> None:
 def test_ticket_api_database_disconnected(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies ticket APIs return HTTP 503 when the database connection drops (P2-EC-010)."""
     def mock_broken_db():
-        broken_engine = create_engine("postgresql+psycopg://invalid:invalid@127.0.0.1:54999/down")
+        broken_engine = create_engine(
+            "postgresql+psycopg://invalid:invalid@127.0.0.1:54999/down",
+            connect_args={"connect_timeout": 1},
+        )
         BrokenSession = sessionmaker(bind=broken_engine)
         session = BrokenSession()
         try:

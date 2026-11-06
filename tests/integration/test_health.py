@@ -25,8 +25,11 @@ def test_health_check_database_disconnected(monkeypatch: pytest.MonkeyPatch) -> 
     """Verifies that GET /api/v1/health returns HTTP 503 when the database is unreachable (P1-EV-011, P1-EC-008)."""
 
     def mock_failing_db():
-        # Session pointing to an invalid database endpoint
-        broken_engine = create_engine("postgresql+psycopg://invalid_user:invalid_pass@127.0.0.1:54999/nonexistent")
+        # Session pointing to an invalid database endpoint with bounded 1s timeout
+        broken_engine = create_engine(
+            "postgresql+psycopg://invalid_user:invalid_pass@127.0.0.1:54999/nonexistent",
+            connect_args={"connect_timeout": 1},
+        )
         BrokenSession = sessionmaker(bind=broken_engine)
         session = BrokenSession()
         try:

@@ -18,6 +18,8 @@ dependencies = [
     "psycopg[binary]>=3.1.18",
     "python-dotenv>=1.0.1",
     "google-genai>=2.0.0",
+    "redis>=5.0.0",
+    "rq>=1.16.0",
 ]
 
 [project.optional-dependencies]

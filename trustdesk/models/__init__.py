@@ -4,6 +4,7 @@ from trustdesk.core.database import Base
 from trustdesk.models.action import ActionIdempotency, ProposedAction
 from trustdesk.models.ai import DraftCitation, DraftResponse, ExecutionTrace, TriageResult
 from trustdesk.models.customer import Customer
+from trustdesk.models.eval import EvalResult, EvalRun
 from trustdesk.models.knowledge import KBSection, KnowledgeDocument
 from trustdesk.models.order import Order
 from trustdesk.models.quarantine import QuarantinedRecord
@@ -15,6 +16,8 @@ __all__ = [
     "Customer",
     "DraftCitation",
     "DraftResponse",
+    "EvalResult",
+    "EvalRun",
     "ExecutionTrace",
     "KBSection",
     "KnowledgeDocument",

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,7 +13,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from trustdesk.api.v1.actions import router as actions_router
 from trustdesk.api.v1.drafts import router as drafts_router
+from trustdesk.api.v1.evaluations import router as evaluations_router
 from trustdesk.api.v1.health import router as health_router
+from trustdesk.api.v1.jobs import router as jobs_router
 from trustdesk.api.v1.tickets import router as tickets_router
 from trustdesk.api.v1.triage import router as triage_router
 from trustdesk.core.config import settings
@@ -87,7 +90,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "error": {
                 "code": "VALIDATION_ERROR",
                 "message": "Request validation failed.",
-                "details": {"errors": exc.errors()},
+                "details": {"errors": jsonable_encoder(exc.errors(), custom_encoder={Exception: str})},
             }
         },
     )
@@ -135,6 +138,8 @@ app.include_router(tickets_router, prefix="/api/v1")
 app.include_router(triage_router, prefix="/api/v1")
 app.include_router(drafts_router, prefix="/api/v1")
 app.include_router(actions_router, prefix="/api/v1")
+app.include_router(evaluations_router, prefix="/api/v1")
+app.include_router(jobs_router, prefix="/api/v1")
 
 
 @app.get("/", include_in_schema=False)

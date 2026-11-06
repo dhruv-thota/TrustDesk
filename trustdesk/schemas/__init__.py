@@ -12,6 +12,19 @@ from trustdesk.schemas.draft import (
     DraftCitationSchema,
     DraftResponseSchema,
 )
+from trustdesk.schemas.eval import (
+    CaseEvaluationOutcome,
+    DatasetValidationResult,
+    EvaluationCaseSchema,
+    ExpectedActionSchema,
+    ExpectedTriageSchema,
+    GuardrailExpectationsSchema,
+    InputAccounting,
+    MetricScore,
+    MetricsSummary,
+    PrecisionRecallScore,
+    ValidatedLine,
+)
 from trustdesk.schemas.ticket import (
     CustomerProfileSchema,
     OrderDetailSchema,
@@ -32,10 +45,20 @@ __all__ = [
     "ActionProposalCreateSchema",
     "ActionRecommendationSchema",
     "ActionRejectRequestSchema",
+    "CaseEvaluationOutcome",
     "CustomerProfileSchema",
+    "DatasetValidationResult",
     "DraftCitationSchema",
     "DraftResponseSchema",
+    "EvaluationCaseSchema",
+    "ExpectedActionSchema",
+    "ExpectedTriageSchema",
+    "GuardrailExpectationsSchema",
+    "InputAccounting",
+    "MetricScore",
+    "MetricsSummary",
     "OrderDetailSchema",
+    "PrecisionRecallScore",
     "TicketCategory",
     "TicketContextSchema",
     "TicketDetailSchema",
@@ -43,5 +66,6 @@ __all__ = [
     "TicketPriority",
     "TicketSummarySchema",
     "TriageResultSchema",
+    "ValidatedLine",
 ]
 

@@ -5,6 +5,7 @@ import TicketContext from './components/TicketContext';
 import TriagePanel from './components/TriagePanel';
 import DraftViewer from './components/DraftViewer';
 import ActionApprovalCard from './components/ActionApprovalCard';
+import EvaluationDashboard from './components/EvaluationDashboard';
 import {
   fetchTicketContext,
   fetchTicketActions,
@@ -13,6 +14,7 @@ import {
 } from './api/client';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState('tickets');
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [ticketContext, setTicketContext] = useState(null);
   const [ticketAction, setTicketAction] = useState(null);
@@ -131,72 +133,112 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Split-Pane Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Ticket Queue (4 cols on lg screens) */}
-        <section className="lg:col-span-4 h-[calc(100vh-6rem)] sticky top-4">
-          <TicketList
-            selectedTicketId={selectedTicketId}
-            onSelectTicket={handleSelectTicket}
-            refreshTrigger={refreshQueueTrigger}
-          />
-        </section>
+      {/* Navigation Sub-header */}
+      <nav className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 flex items-center gap-6">
+          <button
+            type="button"
+            data-testid="tab-tickets"
+            onClick={() => setActiveTab('tickets')}
+            className={`py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'tickets'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <span>✉</span>
+            <span>Ticket Workspace</span>
+          </button>
 
-        {/* Right Column: Ticket Workspace (8 cols on lg screens) */}
-        <section className="lg:col-span-8 space-y-4">
-          {!selectedTicketId ? (
-            <div className="bg-white rounded-lg shadow border border-gray-200 p-12 text-center text-gray-500">
-              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 text-xl font-bold">
-                ✉
-              </div>
-              <h3 className="text-base font-bold text-gray-800 mb-1">No Ticket Selected</h3>
-              <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                Select a support ticket from the queue on the left to inspect customer history, run AI triage, review grounded drafts, and manage operational actions.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Context Details Panel */}
-              <TicketContext
-                context={ticketContext}
-                loading={loadingContext}
-                error={contextError}
-              />
+          <button
+            type="button"
+            data-testid="tab-evaluations"
+            onClick={() => setActiveTab('evaluations')}
+            className={`py-3 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
+              activeTab === 'evaluations'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <span>📊</span>
+            <span>Evaluation Suite & Verification</span>
+          </button>
+        </div>
+      </nav>
 
-              {/* AI & Operations Panel */}
-              {ticketContext && (
-                <div className="space-y-4">
-                  {/* AI Triage Section */}
-                  <TriagePanel
-                    ticketId={selectedTicketId}
-                    triageResult={triageResult}
-                    onTriageComplete={setTriageResult}
-                  />
+      {/* View Router */}
+      {activeTab === 'evaluations' ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4">
+          <EvaluationDashboard />
+        </main>
+      ) : (
+        /* Main Split-Pane Layout */
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column: Ticket Queue (4 cols on lg screens) */}
+          <section className="lg:col-span-4 h-[calc(100vh-6rem)] sticky top-4">
+            <TicketList
+              selectedTicketId={selectedTicketId}
+              onSelectTicket={handleSelectTicket}
+              refreshTrigger={refreshQueueTrigger}
+            />
+          </section>
 
-                  {/* Grounded Draft Section */}
-                  <DraftViewer
-                    ticketId={selectedTicketId}
-                    draftResult={draftResult}
-                    onDraftComplete={setDraftResult}
-                    onProposeAction={handleProposeFromDraft}
-                  />
-
-                  {/* Action Approval Card Section */}
-                  <ActionApprovalCard
-                    ticketId={selectedTicketId}
-                    orderId={ticketContext.order?.order_id}
-                    action={ticketAction}
-                    onActionUpdated={(updated) => {
-                      setTicketAction(updated);
-                      setRefreshQueueTrigger((p) => p + 1);
-                    }}
-                  />
+          {/* Right Column: Ticket Workspace (8 cols on lg screens) */}
+          <section className="lg:col-span-8 space-y-4">
+            {!selectedTicketId ? (
+              <div className="bg-white rounded-lg shadow border border-gray-200 p-12 text-center text-gray-500">
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+                  ✉
                 </div>
-              )}
-            </>
-          )}
-        </section>
-      </main>
+                <h3 className="text-base font-bold text-gray-800 mb-1">No Ticket Selected</h3>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                  Select a support ticket from the queue on the left to inspect customer history, run AI triage, review grounded drafts, and manage operational actions.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Context Details Panel */}
+                <TicketContext
+                  context={ticketContext}
+                  loading={loadingContext}
+                  error={contextError}
+                />
+
+                {/* AI & Operations Panel */}
+                {ticketContext && (
+                  <div className="space-y-4">
+                    {/* AI Triage Section */}
+                    <TriagePanel
+                      ticketId={selectedTicketId}
+                      triageResult={triageResult}
+                      onTriageComplete={setTriageResult}
+                    />
+
+                    {/* Grounded Draft Section */}
+                    <DraftViewer
+                      ticketId={selectedTicketId}
+                      draftResult={draftResult}
+                      onDraftComplete={setDraftResult}
+                      onProposeAction={handleProposeFromDraft}
+                    />
+
+                    {/* Action Approval Card Section */}
+                    <ActionApprovalCard
+                      ticketId={selectedTicketId}
+                      orderId={ticketContext.order?.order_id}
+                      action={ticketAction}
+                      onActionUpdated={(updated) => {
+                        setTicketAction(updated);
+                        setRefreshQueueTrigger((p) => p + 1);
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        </main>
+      )}
     </div>
   );
 }

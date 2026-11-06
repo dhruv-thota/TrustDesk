@@ -56,6 +56,33 @@ class Settings(BaseSettings):
         description="Configured Gemini model identifier",
     )
 
+    # Redis and RQ Background Worker Settings
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL for asynchronous task queue and broker",
+    )
+    rq_queue_name: str = Field(
+        default="default",
+        description="Default RQ queue name for background jobs",
+    )
+    worker_stale_threshold_seconds: int = Field(
+        default=60,
+        ge=5,
+        description="Configurable threshold in seconds to detect orphaned queued jobs",
+    )
+    worker_heartbeat_timeout_seconds: int = Field(
+        default=120,
+        ge=10,
+        description="Configurable threshold in seconds to detect dead worker heartbeats",
+    )
+
+    @field_validator("redis_url")
+    @classmethod
+    def validate_redis_url(cls, v: str) -> str:
+        if not v or not (v.startswith("redis://") or v.startswith("rediss://")):
+            raise ValueError(f"Invalid redis URL: must use redis:// or rediss:// protocol, got '{v}'")
+        return v
+
     @field_validator("database_url", "database_url_test")
     @classmethod
     def validate_database_url(cls, v: str) -> str:

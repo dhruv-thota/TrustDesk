@@ -193,3 +193,38 @@ export async function rejectAction(actionId, { reason = null, notes = null } = {
   });
 }
 
+// Phase 7 Evaluation Endpoints
+
+export async function runEvaluation(datasetPath = './data/eval_cases.jsonl') {
+  return apiRequest('/evaluations/run', {
+    method: 'POST',
+    body: JSON.stringify({
+      dataset_path: datasetPath,
+    }),
+  });
+}
+
+export async function fetchJobStatus(jobId) {
+  return apiRequest(`/jobs/${encodeURIComponent(jobId)}`, {
+    method: 'GET',
+  });
+}
+
+export async function fetchEvaluations({ limit = 20, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (offset !== undefined) params.set('offset', String(offset));
+
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiRequest(`/evaluations${query}`, {
+    method: 'GET',
+  });
+}
+
+export async function fetchEvaluationDetail(runId) {
+  return apiRequest(`/evaluations/${encodeURIComponent(runId)}`, {
+    method: 'GET',
+  });
+}
+
+

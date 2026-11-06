@@ -183,3 +183,69 @@ class UnsupportedActionError(TrustDeskException):
             status_code=422,
             details={"action_type": action_type, **(details or {})},
         )
+
+
+class ActiveEvaluationConflictError(TrustDeskException):
+    """Raised when an evaluation run is submitted while another is currently active (P7-EC-002)."""
+
+    def __init__(
+        self,
+        message: str = "An evaluation run is currently active.",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            error_code="EVAL_ALREADY_RUNNING",
+            status_code=409,
+            details=details,
+        )
+
+
+class BrokerUnavailableError(TrustDeskException):
+    """Raised when the background task broker (Redis) is unreachable (P7-EC-001)."""
+
+    def __init__(
+        self,
+        message: str = "Background job broker is unreachable.",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            error_code="REDIS_UNAVAILABLE",
+            status_code=503,
+            details=details,
+        )
+
+
+class EvaluationNotFoundError(TrustDeskException):
+    """Raised when an evaluation run UUID cannot be found in PostgreSQL."""
+
+    def __init__(
+        self,
+        run_id: str,
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message or f"Evaluation run '{run_id}' was not found.",
+            error_code="EVALUATION_NOT_FOUND",
+            status_code=404,
+            details={"run_id": str(run_id), **(details or {})},
+        )
+
+
+class JobNotFoundError(TrustDeskException):
+    """Raised when a background job identifier cannot be found in PostgreSQL."""
+
+    def __init__(
+        self,
+        job_id: str,
+        message: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message or f"Background job '{job_id}' was not found.",
+            error_code="JOB_NOT_FOUND",
+            status_code=404,
+            details={"job_id": job_id, **(details or {})},
+        )
