@@ -355,6 +355,10 @@ TrustDesk enforces strict security boundaries to prevent financial and operation
 - **Browser Automation:** Frontend tests run via Vitest and jsdom. Full cross-browser end-to-end automation (e.g. Playwright) is preserved as a post-MVP operational task.
 
 ---
+## Docker Verification
+
+After starting TrustDesk with Docker Compose, run `docker compose ps` to verify that all five services are running.
+---
 
 ## License
 
