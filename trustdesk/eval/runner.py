@@ -629,6 +629,12 @@ def main() -> None:
         default=None,
         help="Optional preassigned background job identifier",
     )
+    parser.add_argument(
+        "--output-json",
+        type=str,
+        default=None,
+        help="Optional destination path to export comprehensive evaluation report JSON artifact",
+    )
 
     args = parser.parse_args()
 
@@ -711,6 +717,55 @@ def main() -> None:
     print(f"  Passed Cases:    {eval_run.passed_cases} / {eval_run.total_cases}")
     print(f"  Overall Pass:    {opr.get('rate')} ({opr.get('numerator')}/{opr.get('denominator')})")
     print("=" * 70)
+
+    # Export report artifact if requested
+    if args.output_json:
+        with get_db_session() as session:
+            results = session.execute(
+                select(EvalResult)
+                .where(EvalResult.run_id == eval_run.run_id)
+                .order_by(EvalResult.source_line_number.asc())
+            ).scalars().all()
+
+            report_data = {
+                "run_id": str(eval_run.run_id),
+                "job_id": eval_run.job_id,
+                "status": eval_run.status,
+                "created_at": eval_run.created_at.isoformat() if eval_run.created_at else None,
+                "started_at": eval_run.started_at.isoformat() if eval_run.started_at else None,
+                "finished_at": eval_run.finished_at.isoformat() if eval_run.finished_at else None,
+                "total_cases": eval_run.total_cases,
+                "passed_cases": eval_run.passed_cases,
+                "metrics_summary": eval_run.metrics_summary,
+                "dataset_health": {
+                    "total_lines": accounting.get("total_lines", 0),
+                    "evaluated": accounting.get("evaluated", 0),
+                    "inconclusive": accounting.get("inconclusive", 0),
+                    "invalid_input": accounting.get("invalid_input", 0),
+                    "model_failure": accounting.get("model_failure", 0),
+                    "is_valid": accounting.get("is_valid", True),
+                },
+                "case_results": [
+                    {
+                        "source_line_number": r.source_line_number,
+                        "case_id": r.case_id,
+                        "ticket_id": r.ticket_id,
+                        "validation_status": r.validation_status,
+                        "triage_passed": r.triage_passed,
+                        "citation_passed": r.citation_passed,
+                        "safety_passed": r.safety_passed,
+                        "escalation_passed": r.escalation_passed,
+                        "execution_details": r.execution_details,
+                    }
+                    for r in results
+                ],
+            }
+
+        out_path = Path(args.output_json)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(report_data, f, indent=2)
+        print(f"\n[REPORT EXPORT] Evaluation summary report successfully written to: {out_path}")
 
     sys.exit(0)
 

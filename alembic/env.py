@@ -16,10 +16,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override sqlalchemy.url with application settings unless already set via CLI
+# Override sqlalchemy.url with environment or application settings unless explicitly configured
+target_url = os.environ.get("DATABASE_URL") or settings.database_url
 current_url = config.get_main_option("sqlalchemy.url")
-if not current_url or "postgres:postgres@localhost:5432/trustdesk" in current_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+if not current_url or current_url.endswith("/trustdesk") or "localhost:5432" in current_url:
+    config.set_main_option("sqlalchemy.url", target_url)
 
 target_metadata = Base.metadata
 

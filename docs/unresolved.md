@@ -1,7 +1,7 @@
 # TrustDesk — Unresolved Decisions & Dependencies Register
 
-**Document Version:** 1.1.0  
-**Status:** Active Living Register  
+**Document Version:** 1.2.0<br/>
+**Status:** Final MVP Reconciled Register<br/>
 **Role:** Technical Architect & Documentation Maintainer  
 **Authoritative References:**  
 - [docs/problem_statement.md](file:///Users/dhruv/Desktop/TrustDesk/docs/problem_statement.md)  
@@ -40,7 +40,7 @@ This register is a permanent, living document designed to prevent unverified ass
 | 5. Post-MVP Deferred Items | 2 | 0 | 0 | 2 |
 | **Total Tracked Items** | **3** | **0** | **11** | **14** |
 
-*Note: All Phase 7 decision contracts (`U-004` Option B, `U-009` metric formulas) are fully implemented and verified. `U-007` maintains approved baseline parameters; empirical retrieval tuning remains open for post-MVP benchmarking. Zero items are blocked.*
+*Note: All Phase 1 through Phase 8 MVP decision contracts (`U-001` through `U-006`, `U-008`, `U-009`, `U-010`, `U-013`, `U-014`) are fully implemented, verified, and closed with automated test evidence. `U-007` maintains approved baseline parameters; empirical retrieval tuning remains open for post-MVP benchmarking. `U-011` (Qdrant semantic retrieval) and `U-012` (Production JWT/OIDC authentication) remain preserved as non-blocking post-MVP items. Zero items are blocked.*
 
 ---
 

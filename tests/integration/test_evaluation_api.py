@@ -32,6 +32,9 @@ DATASET_PATH = Path("data/eval_cases.jsonl")
 @pytest.fixture(autouse=True)
 def clean_eval_environment():
     """Ensure clean PostgreSQL evaluation state, fresh KB sections, and flushed Redis."""
+    orig_queue = settings.rq_queue_name
+    settings.rq_queue_name = "test_eval_api_queue"
+
     # 1. Clean Database
     with get_db_session() as session:
         session.execute(
@@ -53,6 +56,7 @@ def clean_eval_environment():
 
     yield
 
+    settings.rq_queue_name = orig_queue
     with get_db_session() as session:
         session.execute(
             text("TRUNCATE TABLE action_idempotency, proposed_actions, eval_results, eval_runs CASCADE;")

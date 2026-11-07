@@ -11,6 +11,7 @@ from alembic.config import Config
 from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
+from trustdesk.core.config import settings
 from trustdesk.core.database import Base, engine, get_db_session
 from trustdesk.models.eval import EvalResult, EvalRun
 
@@ -322,6 +323,7 @@ def test_migration_005_downgrade_and_reupgrade() -> None:
     project_root = Path(__file__).resolve().parent.parent.parent
     alembic_ini = project_root / "alembic.ini"
     alembic_cfg = Config(str(alembic_ini))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_test)
 
     # Downgrade to 004_create_phase5_action_tables
     command.downgrade(alembic_cfg, "004_create_phase5_action_tables")
