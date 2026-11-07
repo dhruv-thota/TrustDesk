@@ -191,6 +191,23 @@ Run the entire TrustDesk application stack with a single command. No local Pytho
 
 ---
 
+### 5.6 Submission Verification
+
+Evaluators can verify that all five Docker services are actively running and healthy in a single step:
+
+```bash
+docker compose ps
+```
+
+Expected output confirms all services are healthy and ready to receive traffic:
+- `trustdesk-backend`: `Up (healthy)` on `http://localhost:8000` (FastAPI REST service)
+- `trustdesk-frontend`: `Up (healthy)` on `http://localhost:5173` (React 18 SPA via Nginx)
+- `trustdesk-postgres`: `Up (healthy)` on `localhost:5433` (PostgreSQL 15 storage)
+- `trustdesk-redis`: `Up (healthy)` on `localhost:6379` (Redis 7 task queue)
+- `trustdesk-worker`: `Up` (Python RQ background evaluation worker)
+
+---
+
 ## 6. Alternative Setup — Local Development (Manual Virtualenv & Node.js)
 
 If you prefer to run the FastAPI backend, RQ worker, or React frontend directly on your host machine without Docker for local development or debugging:
