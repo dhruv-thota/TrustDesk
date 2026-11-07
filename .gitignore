@@ -1,5 +1,13 @@
 # Personal walkthrough documentation (excluded from public repository)
 /walkthroughs/
+docs/*walkthrough*.md
+
+# Internal project planning, conventions, and phase development documentation
+docs/implementation_plan.md
+docs/unresolved.md
+docs/conventions.md
+docs/*evals*.md
+docs/*edgecases*.md
 
 # Local environment configuration
 .env

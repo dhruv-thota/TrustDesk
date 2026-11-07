@@ -1,8 +1,7 @@
 # TrustDesk — AI-Assisted Customer Support Operations Platform
 
 **Document Version:** 1.0.0  
-**Phase:** Phase 8 Final Verification  
-**Target Environment:** Local Python Virtualenv + Docker Compose + Node.js  
+**Target Environment:** Docker Compose (Complete 5-Service Stack) | Local Python Virtualenv & Node.js  
 
 TrustDesk is an internal operations platform designed to assist human customer support agents in triaging customer inquiries, drafting policy-grounded responses, and safely initiating controlled, non-autonomous operational actions (specifically `start_refund_review`).
 
@@ -53,11 +52,12 @@ TrustDesk supports four canonical operational workflows (`docs/architecture.md` 
 
 ## 3. Technology Stack
 
+- **Container Orchestration:** Docker Compose v2 (5 isolated services: `postgres`, `redis`, `backend`, `worker`, `frontend`).
 - **Backend Runtime:** Python 3.12 (PEP 8, strict type hints, Pydantic v2, SQLAlchemy 2.0).
 - **Web Framework:** FastAPI (RESTful API, asynchronous route handling, standardized error envelopes).
 - **Authoritative Database:** PostgreSQL 15 (SQLAlchemy 2.0 ORM, Alembic migrations, native Full-Text Search with `tsvector`, English dictionary, and GIN index).
 - **Asynchronous Task Queue:** Redis 7 + Python RQ (background worker processing long-running evaluation benchmarks).
-- **Frontend Dashboard:** React 18 + Vite + Tailwind CSS (responsive support-agent workspace with ticket queue, triage panel, draft viewer, and action card).
+- **Frontend Dashboard:** React 18 + Vite + Tailwind CSS (responsive support-agent workspace served via Nginx with API reverse proxy).
 - **AI Model Abstraction:** `AIProviderAdapter` (supports offline deterministic `MockAIProvider`, Airtribe-compatible `OpenRouterAIProvider` via OpenAI-compatible API, and Google Gemini `LiveAIProvider` via `google-genai`).
 
 ---
@@ -78,78 +78,181 @@ TrustDesk/
 │   ├── worker/           # Background RQ worker and job service
 │   └── cli.py            # Administrative CLI (dataset ingestion, policy chunking, FTS search)
 ├── frontend/             # React 18 + Vite support-agent dashboard
+│   ├── Dockerfile        # Multi-stage production build (Node 20 builder -> Nginx 1.27 runner)
+│   └── nginx.conf        # Production reverse proxy (SPA routing + /api/ upstream proxy)
 ├── alembic/              # Database schema migrations (001 through 005)
 ├── data/                 # Operational source datasets & golden eval cases
 ├── tests/                # Automated pytest suites (unit, integration, adversarial, e2e)
-├── docker-compose.yml    # PostgreSQL 15 & Redis 7 container orchestration
+├── Dockerfile            # Shared Python 3.12-slim container for backend and worker
+├── entrypoint.sh         # Container entrypoint (migration + data ingestion + uvicorn)
+├── docker-compose.yml    # Complete 5-service container orchestration
 └── pyproject.toml        # Python project dependencies & build configuration
 ```
 
 ---
 
-## 5. Prerequisites
+## 5. Quick Start — Docker Compose (Recommended)
 
-Before running TrustDesk, ensure your system has:
-- **Docker & Docker Compose** (v20.10+ / Compose v2.0+)
-- **Python 3.11+** (Python 3.12.6 recommended)
-- **Node.js 18+ & npm** (for frontend dashboard)
+Run the entire TrustDesk application stack with a single command. No local Python or Node.js environment is required on the host.
+
+### 5.1 Prerequisites
+- **Docker & Docker Compose** (Docker v20.10+ / Compose v2.0+)
 - **Git**
+
+### 5.2 Launch the Stack
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/dhruv-ahuja/TrustDesk.git
+   cd TrustDesk
+   ```
+
+2. **Create your environment configuration:**
+   ```bash
+   cp .env.example .env
+   ```
+   *(The default `.env` is pre-configured with deterministic `AI_PROVIDER=mock` and requires zero external credentials).*
+
+3. **Start all 5 services:**
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. **Verify container health:**
+   ```bash
+   docker compose ps
+   ```
+   All five containers (`trustdesk-postgres`, `trustdesk-redis`, `trustdesk-backend`, `trustdesk-worker`, and `trustdesk-frontend`) will report status `healthy` (or `running`).
+
+> [!NOTE]
+> **Automated Database Seeding:** On startup, the backend container entrypoint automatically executes `alembic upgrade head` and seeds all 4 demo tickets, customers, orders, and knowledge base documents via `python -m trustdesk.cli ingest --data-dir ./data`. The RQ background worker starts automatically once the backend is healthy.
+
+### 5.3 Service Access URLs
+
+| Component | URL | Description |
+| :--- | :--- | :--- |
+| **Support Agent Dashboard** | [http://localhost:5173](http://localhost:5173) | React 18 web application served via Nginx |
+| **Interactive API Documentation** | [http://localhost:8000/docs](http://localhost:8000/docs) | FastAPI interactive Swagger UI |
+| **Alternative API Specs** | [http://localhost:8000/redoc](http://localhost:8000/redoc) | FastAPI ReDoc interface |
+| **API Health Endpoint** | [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health) | Database and Redis connectivity check |
+| **PostgreSQL Host Port** | `localhost:5433` | PostgreSQL 15 database instance |
+| **Redis Host Port** | `localhost:6379` | Redis 7 asynchronous broker |
 
 ---
 
-## 6. Environment Configuration
+### 5.4 Recommended 5-Step Evaluation / Demo Walkthrough
 
-Copy the example configuration to `.env`:
+1. **Open the Dashboard:** Navigate to [http://localhost:5173](http://localhost:5173) in your browser.
+2. **Authenticate:** Click **Set Demo Token** in the top navigation bar. This stores `demo_secret_token_123` in browser `sessionStorage` and immediately loads the 4 pre-seeded demo tickets in the queue.
+3. **Select a Ticket:** Click ticket **`TIK-001`** (Customer damaged blender refund inquiry). Review the loaded customer profile, order history, and delivery timestamp.
+4. **Run AI Triage & Draft:**
+   - Click **Run Triage**: View the automated categorization (`refund`), high priority, and reason trace.
+   - Click **Generate Draft**: Review the policy-grounded draft response with interactive citation chips linking directly to the cited Return & Refund policy sections.
+5. **Human Approval Gate:**
+   - Inspect the proposed action card (`start_refund_review`).
+   - Click **Approve** (or **Reject**). Notice that the approval executes with an automated server-verified idempotency key and row-level database lock, recording an immutable trace in `execution_traces`.
+6. **(Optional) Run Asynchronous Evaluations:**
+   - Navigate to the **Evaluations** tab.
+   - Click **Run Benchmark** to trigger the 18-case offline evaluation suite.
+   - Watch live progress polled from the backend as the background RQ worker processes all test cases asynchronously without blocking the UI.
 
-```bash
-cp .env.example .env
-```
+---
 
-The default `.env` configuration is pre-tuned for local development:
+### 5.5 Operational & Lifecycle Commands
 
-```ini
-# Database Configuration (Docker Compose maps PostgreSQL to port 5433)
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/trustdesk
-DATABASE_URL_TEST=postgresql+psycopg://postgres:postgres@localhost:5433/trustdesk_test
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=trustdesk
-POSTGRES_PORT=5433
+- **Stream service logs:**
+  ```bash
+  docker compose logs -f
+  # Or stream a specific service:
+  docker compose logs -f backend
+  ```
 
-# Redis Task Broker
-REDIS_URL=redis://localhost:6379/0
+- **Stop the stack (Preserves database data):**
+  ```bash
+  docker compose stop
+  # OR
+  docker compose down
+  ```
 
-# Authentication & Security
-TRUSTDESK_DEMO_TOKEN=demo_secret_token_123
+- **Start the stack back up:**
+  ```bash
+  docker compose up -d
+  ```
 
-# Application Settings
-ENVIRONMENT=development
-LOG_LEVEL=INFO
-APP_HOST=0.0.0.0
-APP_PORT=8000
+- **Rebuild after making code edits:**
+  ```bash
+  docker compose up --build -d
+  ```
 
-# AI Provider Configuration
-# Supported options: "mock" (default, deterministic offline), "openrouter" (live LLM via OpenRouter), "live" (Google Gemini)
-AI_PROVIDER=mock
+> [!CAUTION]
+> **Data Persistence Warning:**
+> PostgreSQL data is stored in the persistent Docker named volume `postgres_data`. Normal `docker compose down` or `docker compose stop` will **never** wipe your database.
+> Never run `docker compose down -v` unless you explicitly intend to delete the persistent volume and erase all database records.
 
-# OpenRouter Configuration (required when AI_PROVIDER=openrouter)
-# OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxx
-# OPENROUTER_MODEL=openai/gpt-5-mini
-# OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-# OPENROUTER_SITE_URL=http://localhost:5173
-# OPENROUTER_SITE_NAME=TrustDesk
+---
 
-# Google Gemini Configuration (required when AI_PROVIDER=live)
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.8-flash
-```
+## 6. Alternative Setup — Local Development (Manual Virtualenv & Node.js)
 
-> [!NOTE]
-> All automated tests (`pytest`) and offline evaluations run 100% offline using `MockAIProvider` without requiring live API keys or incurring network latency.
+If you prefer to run the FastAPI backend, RQ worker, or React frontend directly on your host machine without Docker for local development or debugging:
 
-### 6.1 Switching Between Mock and OpenRouter AI Modes
+### 6.1 Host Prerequisites
+- **Python 3.11+** (Python 3.12.6 recommended)
+- **Node.js 18+ & npm**
+- **Docker & Docker Compose** (for PostgreSQL and Redis)
 
-TrustDesk's architecture cleanly isolates model inference behind the `AIProviderAdapter` protocol. To switch between offline mock mode and live LLM inference:
+### 6.2 Host Environment Setup
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Start PostgreSQL 15 and Redis 7 via Docker Compose:
+   ```bash
+   docker compose up -d postgres redis
+   ```
+   PostgreSQL is available on host port `5433`, and Redis is on port `6379`.
+
+3. Create and activate a Python virtual environment:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -e ".[dev]"
+   ```
+
+4. Apply database migrations:
+   ```bash
+   alembic upgrade head
+   ```
+
+5. Ingest baseline datasets into PostgreSQL:
+   ```bash
+   python -m trustdesk.cli ingest --data-dir ./data
+   ```
+
+### 6.3 Running Services Locally
+
+- **Start the FastAPI Backend:**
+  ```bash
+  uvicorn trustdesk.main:app --host 0.0.0.0 --port 8000 --reload
+  ```
+
+- **Start the Background Worker (Terminal 2):**
+  ```bash
+  source .venv/bin/activate
+  python -m trustdesk.worker.worker
+  ```
+
+- **Start the React Frontend (Terminal 3):**
+  ```bash
+  npm --prefix frontend install
+  npm --prefix frontend run dev
+  ```
+  The frontend dev server runs at `http://localhost:5173`.
+
+### 6.4 Switching Between Mock and OpenRouter AI Modes
+
+TrustDesk isolates model inference behind the `AIProviderAdapter` protocol:
 
 1. **Deterministic Mock Mode (Default):**
    ```ini
@@ -168,180 +271,28 @@ TrustDesk's architecture cleanly isolates model inference behind the `AIProvider
    - **Structured Output & Robust Parsing:** Requests strict JSON output schemas, and handles markdown fences automatically.
    - **Bounded Latency & Retries:** 15-second per-request timeout with at most one automatic retry for transient errors or rate limits (429).
    - **Untrusted Input Tagging:** Customer messages and retrieved policies are tagged with XML delimiters to neutralize prompt injection attempts.
-   - **Advisory-Only Safety Boundary:** The model cannot trigger operational actions. Draft responses undergo deterministic 3-level guardrail verification (citation provenance check against retrieved sections, quoted snippet validation, and temporal eligibility calculations relative to `ticket.created_at`).
+   - **Advisory-Only Safety Boundary:** The model cannot trigger operational actions. Draft responses undergo deterministic 3-level guardrail verification.
    - **Graceful Triage Fallback:** If the external API is unreachable or times out, the backend gracefully catches provider errors and marks triage for manual human escalation without crashing the service.
 
 ---
 
-## 7. Infrastructure Startup (Docker Compose)
-
-Start PostgreSQL 15 and Redis 7 in the background:
-
-```bash
-docker compose up -d
-```
-
-Verify that both containers are running and healthy:
-
-```bash
-docker compose ps
-```
-
-PostgreSQL is available on host port `5433` (to avoid conflicting with any local PostgreSQL instance on 5432). Redis is available on port `6379`.
-
-### 7.1 Data Persistence & Test Isolation
-
-TrustDesk stores development database records in a persistent named Docker volume (`postgres_data`).
-
-- **Normal Startup (Preserves Data):**
-  ```bash
-  docker compose up -d
-  ```
-- **Normal Shutdown (Preserves Data):**
-  ```bash
-  docker compose stop
-  # OR
-  docker compose down
-  ```
-- **Destructive Commands to AVOID:**
-  > [!CAUTION]
-  > Never run `docker compose down -v` or `docker volume rm trustdesk_postgres_data` unless you explicitly intend to delete the persistent database volume and wipe all data.
-
-- **Automated Test Isolation:**
-  All backend tests (`pytest`) run strictly against the isolated test database `DATABASE_URL_TEST` (`trustdesk_test`). Running `pytest tests/` will never truncate or modify your development tickets, customers, or orders.
-
-- **Verifying Development Ticket Counts:**
-  ```bash
-  ./.venv/bin/python -c '
-  from trustdesk.core.config import settings
-  from sqlalchemy import create_engine, text
-  with create_engine(settings.database_url).connect() as conn:
-      print("Tickets in Dev DB:", conn.execute(text("SELECT count(*) FROM tickets;")).scalar())
-  '
-  ```
-
-- **Restoring Demo Data (Idempotent):**
-  If records ever need to be restored or re-synced, use the existing idempotent CLI ingestion command:
-  ```bash
-  python -m trustdesk.cli ingest --data-dir ./data
-  ```
-
-- **Browser Session Authentication Note:**
-  In accordance with security conventions (`docs/conventions.md`), the demo bearer token is stored strictly in browser `sessionStorage` (which is naturally cleared when closing a tab or browser window). When opening a fresh browser window at `http://localhost:5173`, click **Set Demo Token** in the top navigation bar to authenticate and populate the ticket queue.
-
----
-
-## 8. Database Migrations
-
-Set up your Python virtual environment and install dependencies:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-Apply all Alembic database schema migrations (001 through 005):
-
-```bash
-alembic upgrade head
-```
-
-This creates the source operational tables (`customers`, `orders`, `tickets`, `quarantined_records`), knowledge base tables with FTS indexes (`kb_documents`, `kb_sections`), AI and trace records (`triage_results`, `draft_responses`, `draft_citations`, `execution_traces`), human action approval tables (`proposed_actions`, `action_idempotency`), and evaluation tracking tables (`eval_runs`, `eval_results`).
-
----
-
-## 9. Dataset Ingestion & Knowledge Base Indexing
-
-Ingest the operational baseline datasets (`customers.json`, `orders.json`, `tickets.json`, `kb_documents.json`, `tool_catalog.json`):
-
-```bash
-python -m trustdesk.cli ingest --data-dir ./data
-```
-
-This command:
-1. Ingests customer profiles and order histories with relational integrity.
-2. Ingests support tickets with foreign-key quarantine (unresolvable order references are preserved in `raw_metadata["unresolved_order_id"]`).
-3. Ingests policy markdown documents and parses them into discrete sections.
-4. Generates PostgreSQL GIN full-text search tsvectors on `kb_sections`.
-5. Loads the sensitive tool catalog into memory.
-
-You can test knowledge base search directly via CLI:
-
-```bash
-python -m trustdesk.cli search-policies "refund window policy"
-```
-
----
-
-## 10. Backend API Startup
-
-Start the FastAPI application with Uvicorn:
-
-```bash
-uvicorn trustdesk.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-The interactive OpenAPI documentation is available at:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- Health Endpoint: `http://localhost:8000/api/v1/health`
-
----
-
-## 11. Asynchronous Background Worker Startup
-
-In a separate terminal, start the Python RQ background worker to process asynchronous evaluation jobs:
-
-```bash
-source .venv/bin/activate
-python -m trustdesk.worker.worker
-```
-
-The worker registers a heartbeat with Redis, monitors the queue, and executes evaluation runs without blocking API threads.
-
----
-
-## 12. Frontend Dashboard Startup
-
-In a separate terminal, install dependencies and launch the React dashboard:
-
-```bash
-npm --prefix frontend install
-npm --prefix frontend run dev
-```
-
-Open your browser to:
-```
-http://localhost:5173
-```
-
-### Dashboard Features:
-- **Demo Session Bar:** Selects or sets the demo bearer token stored safely in browser `sessionStorage`.
-- **Ticket Queue:** Lists incoming tickets with status badges, priority filters, and search.
-- **Context Viewer:** Displays linked customer information, delivery dates, and purchased items.
-- **AI Triage Panel:** Triggers classification and displays category, priority, and escalation notices.
-- **Draft Response Viewer:** Displays grounded draft responses with interactive citation chips revealing quoted policy snippets.
-- **Action Approval Card:** Displays proposed `start_refund_review` actions. Agents can click **Approve** (with automated client-side idempotency keys) or **Reject**.
-- **Evaluation Dashboard:** Submits background evaluation runs, tracks live job progress, and renders comprehensive U-009 metric reports.
-
----
-
-## 13. Running Automated Tests
+## 7. Running Automated Tests
 
 TrustDesk includes comprehensive unit, integration, adversarial security, and end-to-end integration test suites:
 
-### Run the Security Regression Suite:
+> [!NOTE]
+> **Database Test Isolation:** All backend tests (`pytest`) run strictly against an isolated test database `DATABASE_URL_TEST` (`trustdesk_test`), shielding development records from test truncations.
+
+### Run Security Regression Suite:
 ```bash
 ./.venv/bin/pytest tests/adversarial/test_security_regressions.py -v
 ```
 
-### Run the Full Backend Suite (290 tests):
+### Run Full Backend Suite (290 tests):
 ```bash
 ./.venv/bin/pytest tests/
 ```
-
-Includes 11 dedicated unit and boundary tests in `tests/unit/test_openrouter_provider.py` verifying mock and OpenRouter provider contracts, payload serialization, error resilience, rate limit handling, and injection neutralization.
+*Includes 11 dedicated unit and boundary tests in `tests/unit/test_openrouter_provider.py` verifying mock and OpenRouter provider contracts, payload serialization, error resilience, rate limit handling, and injection neutralization.*
 
 ### Run Frontend Component & Interaction Tests (52 tests):
 ```bash
@@ -355,7 +306,7 @@ npm --prefix frontend run build
 
 ---
 
-## 14. Running Evaluations & Generating Reports
+## 8. Running Offline Evaluations & Generating Reports
 
 TrustDesk features an automated offline evaluation engine that benchmarks AI triage accuracy, policy grounding, escalation recall, and safety against `data/eval_cases.jsonl`.
 
@@ -366,7 +317,7 @@ TrustDesk features an automated offline evaluation engine that benchmarks AI tri
 
 > [!NOTE]
 > **Evaluation Report Export Limitation:**
-> The `--output-json` option exports complete benchmark reports for completed evaluation runs (`eval_run.status == "completed"`). If an evaluation run fails or crashes (e.g. database error, unhandled exception, or `eval_run.status == "failed"`), the runner currently prints all available failure details to `stdout`/`stderr` and terminates with a non-zero exit status (`1`) prior to JSON report artifact serialization.
+> The `--output-json` option exports complete benchmark reports for completed evaluation runs (`eval_run.status == "completed"`). If an evaluation run fails or crashes (e.g. database error, unhandled exception, or `eval_run.status == "failed"`), the runner prints all failure details to `stdout`/`stderr` and terminates with a non-zero exit status (`1`) prior to JSON report artifact serialization.
 
 > [!IMPORTANT]
 > **Deterministic Mock vs. Live Evaluation:**
@@ -382,7 +333,7 @@ $$N_{\text{total\_lines}} (18) = N_{\text{evaluated}} (16) + N_{\text{inconclusi
 
 ---
 
-## 15. Security & Human Approval Boundaries
+## 9. Security & Human Approval Boundaries
 
 TrustDesk enforces strict security boundaries to prevent financial and operational vulnerabilities:
 1. **Advisory Semantics:** AI models have zero permissions to mutate application state or trigger refunds directly.
@@ -391,10 +342,11 @@ TrustDesk enforces strict security boundaries to prevent financial and operation
 4. **Header Spoofing Defense:** Client-supplied identity headers (`X-Agent-ID`) are ignored; `reviewed_by` is stamped strictly from server-verified bearer token identity.
 5. **Path Containment:** Evaluation file paths are validated canonically, preventing directory traversal (`../../etc/passwd`) and symlink escapes.
 6. **Prompt Injection Defense:** Customer text is contained inside structural XML delimiters (`<untrusted_customer_message>`), and knowledge base policies are framed as passive evidence.
+7. **Client Token Isolation:** In accordance with standard browser security practices, authentication bearer tokens are stored strictly in `sessionStorage`, ensuring tokens are automatically expunged when tabs or browser windows are closed.
 
 ---
 
-## 16. Known Limitations & Post-MVP Enhancements
+## 10. Known Limitations & Post-MVP Enhancements
 
 - **Post-MVP Semantic Retrieval (`U-011`):** The MVP baseline relies on PostgreSQL Full-Text Search. Vector embeddings and Qdrant hybrid retrieval are deferred to post-MVP.
 - **Post-MVP Production Identity (`U-012`):** MVP demonstration uses server-validated demo bearer tokens. Enterprise JWT, OIDC, and multi-role RBAC are planned for post-MVP.
@@ -407,4 +359,3 @@ TrustDesk enforces strict security boundaries to prevent financial and operation
 ## License
 
 Internal proprietary software developed for TrustDesk operations. All rights reserved.
-
